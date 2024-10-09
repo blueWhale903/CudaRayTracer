@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34728.123
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CudaRayTracer", "CudaRayTracer\CudaRayTracer.vcxproj", "{2F74D191-6013-4DBD-80FE-B26C1C462B20}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2F74D191-6013-4DBD-80FE-B26C1C462B20}.Debug|x64.ActiveCfg = Debug|x64
+		{2F74D191-6013-4DBD-80FE-B26C1C462B20}.Debug|x64.Build.0 = Debug|x64
+		{2F74D191-6013-4DBD-80FE-B26C1C462B20}.Release|x64.ActiveCfg = Release|x64
+		{2F74D191-6013-4DBD-80FE-B26C1C462B20}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C5CD4D56-229D-45A0-B905-EC621C4D4F25}
+	EndGlobalSection
+EndGlobal
