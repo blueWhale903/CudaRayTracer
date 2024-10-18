@@ -292,8 +292,8 @@ static void stbi__stdio_write(void *context, void *data, int size)
 #else
 #define STBIW_EXTERN extern
 #endif
-STBIW_EXTERN __declspec(dllimport) int __stdcall MultiByteToWideChar(unsigned int cp, unsigned long flags, const char *str, int cbmb, wchar_t *widestr, int cchwide);
-STBIW_EXTERN __declspec(dllimport) int __stdcall WideCharToMultiByte(unsigned int cp, unsigned long flags, const wchar_t *widestr, int cchwide, char *str, int cbmb, const char *defchar, int *used_default);
+STBIW_EXTERN __declspec(dllimport) int __stdcall MultiByteToWideChar(uint32_t cp, unsigned long flags, const char *str, int cbmb, wchar_t *widestr, int cchwide);
+STBIW_EXTERN __declspec(dllimport) int __stdcall WideCharToMultiByte(uint32_t cp, unsigned long flags, const wchar_t *widestr, int cchwide, char *str, int cbmb, const char *defchar, int *used_default);
 
 STBIWDEF int stbiw_convert_wchar_to_utf8(char *buffer, size_t bufferlen, const wchar_t* input)
 {
@@ -343,7 +343,7 @@ static void stbi__end_write_file(stbi__write_context *s)
 
 #endif // !STBI_WRITE_NO_STDIO
 
-typedef unsigned int stbiw_uint32;
+typedef uint32_t stbiw_uint32;
 typedef int stb_image_write_test[sizeof(stbiw_uint32)==4 ? 1 : -1];
 
 static void stbiw__writefv(stbi__write_context *s, const char *fmt, va_list v)
@@ -836,7 +836,7 @@ static void *stbiw__sbgrowf(void **arr, int increment, int itemsize)
    return *arr;
 }
 
-static unsigned char *stbiw__zlib_flushf(unsigned char *data, unsigned int *bitbuffer, int *bitcount)
+static unsigned char *stbiw__zlib_flushf(unsigned char *data, uint32_t *bitbuffer, int *bitcount)
 {
    while (*bitcount >= 8) {
       stbiw__sbpush(data, STBIW_UCHAR(*bitbuffer));
@@ -856,7 +856,7 @@ static int stbiw__zlib_bitrev(int code, int codebits)
    return res;
 }
 
-static unsigned int stbiw__zlib_countm(unsigned char *a, unsigned char *b, int limit)
+static uint32_t stbiw__zlib_countm(unsigned char *a, unsigned char *b, int limit)
 {
    int i;
    for (i=0; i < limit && i < 258; ++i)
@@ -864,7 +864,7 @@ static unsigned int stbiw__zlib_countm(unsigned char *a, unsigned char *b, int l
    return i;
 }
 
-static unsigned int stbiw__zhash(unsigned char *data)
+static uint32_t stbiw__zhash(unsigned char *data)
 {
    stbiw_uint32 hash = data[0] + (data[1] << 8) + (data[2] << 16);
    hash ^= hash << 3;
@@ -902,7 +902,7 @@ STBIWDEF unsigned char * stbi_zlib_compress(unsigned char *data, int data_len, i
    static unsigned char  lengtheb[]= { 0,0,0,0,0,0,0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4,  4,  5,  5,  5,  5,  0 };
    static unsigned short distc[]   = { 1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577, 32768 };
    static unsigned char  disteb[]  = { 0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13 };
-   unsigned int bitbuf=0;
+   uint32_t bitbuf=0;
    int i,j, bitcount=0;
    unsigned char *out = NULL;
    unsigned char ***hash_table = (unsigned char***) STBIW_MALLOC(stbiw__ZHASH * sizeof(unsigned char**));
@@ -1000,7 +1000,7 @@ STBIWDEF unsigned char * stbi_zlib_compress(unsigned char *data, int data_len, i
 
    {
       // compute adler32 on input
-      unsigned int s1=1, s2=0;
+      uint32_t s1=1, s2=0;
       int blocklen = (int) (data_len % 5552);
       j=0;
       while (j < data_len) {
@@ -1021,12 +1021,12 @@ STBIWDEF unsigned char * stbi_zlib_compress(unsigned char *data, int data_len, i
 #endif // STBIW_ZLIB_COMPRESS
 }
 
-static unsigned int stbiw__crc32(unsigned char *buffer, int len)
+static uint32_t stbiw__crc32(unsigned char *buffer, int len)
 {
 #ifdef STBIW_CRC32
     return STBIW_CRC32(buffer, len);
 #else
-   static unsigned int crc_table[256] =
+   static uint32_t crc_table[256] =
    {
       0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA, 0x076DC419, 0x706AF48F, 0xE963A535, 0x9E6495A3,
       0x0eDB8832, 0x79DCB8A4, 0xE0D5E91E, 0x97D2D988, 0x09B64C2B, 0x7EB17CBD, 0xE7B82D07, 0x90BF1D91,
@@ -1062,7 +1062,7 @@ static unsigned int stbiw__crc32(unsigned char *buffer, int len)
       0xB3667A2E, 0xC4614AB8, 0x5D681B02, 0x2A6F2B94, 0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D
    };
 
-   unsigned int crc = ~0u;
+   uint32_t crc = ~0u;
    int i;
    for (i=0; i < len; ++i)
       crc = (crc >> 8) ^ crc_table[buffer[i] ^ (crc & 0xff)];
@@ -1076,7 +1076,7 @@ static unsigned int stbiw__crc32(unsigned char *buffer, int len)
 
 static void stbiw__wpcrc(unsigned char **data, int len)
 {
-   unsigned int crc = stbiw__crc32(*data - len - 4, len+4);
+   uint32_t crc = stbiw__crc32(*data - len - 4, len+4);
    stbiw__wp32(*data, crc);
 }
 

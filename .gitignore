@@ -3,5 +3,6 @@
 x64
 
 include
-
 lib
+
+*.png

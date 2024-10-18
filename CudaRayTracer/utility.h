@@ -1,5 +1,8 @@
 ﻿#pragma once
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
 #include <iostream>
 #include <limits>
 #include <memory>
@@ -18,6 +21,7 @@
 using glm::vec3;
 
 // Constants
+static std::mt19937 gen(std::random_device{}());
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -25,9 +29,9 @@ using glm::vec3;
 
 // CUDA check errors
 #define checkCudaErrors(val) check_cuda( (val), #val, __FILE__, __LINE__ )
-void check_cuda(cudaError_t result, char const* const func, const char* const file, int const line) {
+void check_cuda(cudaError_t result, char const* const func, const char* const file, uint32_t const line) {
     if (result) {
-        std::cerr << "CUDA error = " << static_cast<unsigned int>(result) << " at " <<
+        std::cerr << "CUDA error = " << static_cast<uint32_t>(result) << " at " <<
             file << ":" << line << " '" << func << "' \n";
         // Make sure we call CUDA Device Reset before exiting
         cudaDeviceReset();
@@ -37,6 +41,12 @@ void check_cuda(cudaError_t result, char const* const func, const char* const fi
 
 // Utility Functions
 
+__global__ void rand_init(curandState* rand_state) {
+    if (threadIdx.x == 0 && blockIdx.x == 0) {
+        curand_init(2004, 0, 0, rand_state);
+    }
+}
+
 __host__ __device__ inline float degrees_to_radians(float degrees) {
     return degrees * M_PI / 180.0f;
 }
@@ -45,10 +55,19 @@ __device__ float random_float(curandState* local_rand_state, float min, float ma
     return curand_uniform(local_rand_state) * (max - min) + min;
 }
 
+float random_float(float min, float max) {
+    std::uniform_real_distribution<float> distribution(min, max);
+    return distribution(gen);
+}
+
 __device__ vec3 random_vec3(curandState* local_rand_state, float start, float end) {
     return vec3(random_float(local_rand_state, start, end),
             random_float(local_rand_state, start, end),
             random_float(local_rand_state, start, end));
+}
+
+vec3 random_vec3(float start, float end) {
+    return vec3(random_float(start, end), random_float(start, end), random_float(start, end));
 }
 
 __device__ vec3 random_unit_vector(curandState* local_rand_state) {
@@ -68,16 +87,6 @@ __device__ vec3 random_in_unit_disk(curandState* local_rand_state) {
     return vec3(r*cosf(theta), r*sinf(theta), 0);
 }
 
-__device__ vec3 random_on_hemisphere(curandState* local_rand_state, const vec3& normal) {
-    vec3 on_unit_sphere = random_unit_vector(local_rand_state);
-    if (glm::dot(on_unit_sphere, normal) > 0.0f) {
-        return on_unit_sphere;
-    }
-    else {
-        return -on_unit_sphere;
-    }
-}
-
 __device__ vec3 reflect(const vec3& v, const vec3& normal) {
     return v - 2.0f * glm::dot(v, normal) * normal;
 }
@@ -88,6 +97,32 @@ __device__ vec3 refract(const vec3& uv, const vec3& normal, float etai_over_etat
     vec3 r_out_parallel = -std::sqrtf(std::fabs(1.0f - std::pow(glm::length(r_out_perp),2.0f))) * normal;
     return r_out_perp + r_out_parallel;
 }
+
+static void export_framebuffer_to_png(vec3* device_framebuffer, uint32_t width, uint32_t height, const char* filename) {
+    // Allocate host memory for the framebuffer
+    vec3* host_framebuffer = new vec3[width * height];
+
+    // Copy data from device to host
+    cudaMemcpy(host_framebuffer, device_framebuffer, width * height * sizeof(vec3), cudaMemcpyDeviceToHost);
+
+    // Allocate memory for the image data in the format expected by stb_image_write
+    unsigned char* image_data = new unsigned char[width * height * 3];
+
+    // Convert vec3 float data to unsigned char
+    for (uint32_t i = 0; i < width * height; ++i) {
+        image_data[i * 3 + 0] = static_cast<unsigned char>(std::min(std::max(host_framebuffer[i].x * 255.0f, 0.0f), 255.0f));
+        image_data[i * 3 + 1] = static_cast<unsigned char>(std::min(std::max(host_framebuffer[i].y * 255.0f, 0.0f), 255.0f));
+        image_data[i * 3 + 2] = static_cast<unsigned char>(std::min(std::max(host_framebuffer[i].z * 255.0f, 0.0f), 255.0f));
+    }
+
+    // Write the image to a file
+    stbi_write_png(filename, width, height, 3, image_data, width * 3);
+
+    // Free allocated memory
+    delete[] host_framebuffer;
+    delete[] image_data;
+}
+
 
 // Common Headers
 

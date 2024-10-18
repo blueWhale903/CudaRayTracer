@@ -2,7 +2,6 @@
 
 #include <glm/glm.hpp>
 
-
 #include "hittable.h"
 #include "hittable_list.h"
 #include "material.h"
@@ -13,7 +12,7 @@ class Camera {
 public:
 	float aspect_ratio = 16.0f / 9.0f;
 	float vfov = 20;
-	int image_width = 1280;
+	uint32_t image_width = 1280;
 	vec3 look_from = vec3(13.0f,2.0f,3.0f);
 	vec3 look_at = vec3(0, 0, 0);
 	vec3 vup = vec3(0, 1, 0);
@@ -21,9 +20,9 @@ public:
 	float defocus_angle = 0.6f;
 	float focus_distance = 10.0f;
 
-	__host__ __device__ Camera(int image_width, vec3& lookfrom, vec3& lookat, vec3& vup, float vfov, float aspect, float defocus_angle, float focus_dist) {
+	__host__ __device__ Camera(uint32_t image_width, vec3& lookfrom, vec3& lookat, vec3& vup, float vfov, float aspect, float defocus_angle, float focus_dist) {
 		image_width = image_width;
-		image_height = (int)(image_width / aspect_ratio);
+		image_height = (uint32_t)(image_width / aspect_ratio);
 		image_height = (image_height < 1) ? 1 : image_height;
 
 		camera_center = look_from;
@@ -59,7 +58,7 @@ public:
 		Ray cur_ray = ray;
 		vec3 cur_attenuation(1.0f, 1.0f, 1.0f);
 
-		for (int i = 0; i < 50; i++) {
+		for (uint32_t i = 0; i < 50; i++) {
 			HitRecord rec;
 			
 			if ((*world)->hit(cur_ray, Interval(0.001f, FLT_MAX), rec)) {
@@ -96,7 +95,7 @@ public:
 	}
 
 private:
-	int image_height;
+	uint32_t image_height;
 	vec3 camera_center;
 	vec3 zeroth_pixel_location;
 	vec3 pixel_delta_horizontal;

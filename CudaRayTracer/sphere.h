@@ -7,10 +7,14 @@
 
 class Sphere : public Hittable {
 public:
-	__device__ Sphere(const vec3 center, float radius, Material* material)
+	__device__ __host__ Sphere(const vec3 center, float radius, Material* material)
 		: center(center), radius(std::max(0.0f, radius)), material(material) {
 		vec3 rvec(radius, radius, radius);
 		bbox = AABB(center - rvec, center + rvec);
+	}
+
+	__device__ __host__ ~Sphere() {
+		delete material;
 	}
 
 	__device__ bool hit(const Ray& ray, Interval ray_t, HitRecord& record) const override {

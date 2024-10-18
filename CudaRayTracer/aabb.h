@@ -6,14 +6,14 @@ class AABB {
 public:
 	Interval x, y, z;
 
-	__device__ AABB() {}
-	__device__ AABB(const Interval x, const Interval& y, const Interval& z): x(x), y(y), z(z) {}
-	__device__ AABB(const vec3& point_a, const vec3& point_b) {
+	__device__ __host__ AABB() {}
+	__device__ __host__ AABB(const Interval x, const Interval& y, const Interval& z): x(x), y(y), z(z) {}
+	__device__ __host__ AABB(const vec3& point_a, const vec3& point_b) {
 		x = point_a.x < point_b.x ? Interval(point_a.x, point_b.x) : Interval(point_b.x, point_a.x);
 		y = point_a.y < point_b.y ? Interval(point_a.y, point_b.y) : Interval(point_b.y, point_a.y);
 		z = point_a.z < point_b.z ? Interval(point_a.z, point_b.z) : Interval(point_b.z, point_a.z);
 	}
-	__device__ AABB(const AABB& bbox0, const AABB& bbox1) {
+	__device__ __host__ AABB(const AABB& bbox0, const AABB& bbox1) {
 		x = Interval(bbox0.x, bbox1.x);
 		y = Interval(bbox0.y, bbox1.y);
 		z = Interval(bbox0.z, bbox1.z);
@@ -30,7 +30,7 @@ public:
 		vec3 ray_origin = ray.origin();
 		vec3 ray_dir = ray.direction();
 
-		for (uint8_t axis; axis < 3; axis++) {
+		for (uint8_t axis = 0; axis < 3; axis++) {
 			const Interval& ax = get_axis(axis);
 			const double adinv = 1.0 / ray_dir[axis];
 

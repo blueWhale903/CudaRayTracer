@@ -6,9 +6,9 @@ class Interval {
 public:
 	float min, max;
 
-	 __device__ Interval() : min(+FLT_MAX), max(-FLT_MAX) {}
-	 __device__ Interval(float min, float max) : min(min), max(max) {}
-	 __device__ Interval(const Interval& a, const Interval& b) {
+	 __device__ __host__ Interval() : min(+FLT_MAX), max(-FLT_MAX) {}
+	 __device__ __host__ Interval(float min, float max) : min(min), max(max) {}
+	 __device__ __host__ Interval(const Interval& a, const Interval& b) {
 		 min = a.min <= b.min ? min = a.min : min = b.min;
 		 max = a.max >= b.max ? max = a.max : max = b.max;
 	 }
@@ -28,10 +28,4 @@ public:
 		float padding = delta / 2.0f;
 		return Interval(min - padding, max + padding);
 	}
-
-	 //__device__ static const Interval empty, universe;
 };
-
- //__device__ const Interval Interval::empty = Interval(+infinity, -infinity);
- //__device__ const Interval Interval::universe = Interval(-infinity, +infinity);
-

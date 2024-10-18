@@ -4,18 +4,18 @@
 
 class Material {
 public:
-	__device__ Material() { }
-	__device__ virtual bool scatter(const Ray& ray, const HitRecord& record, glm::vec3& attenuation, Ray& scattered, curandState* local_rand_state) const {
+	__device__ __host__ Material() { }
+	__device__ virtual bool scatter(const Ray& ray, const HitRecord& record, vec3& attenuation, Ray& scattered, curandState* local_rand_state) const {
 		return false;
 	}
 };
 
 class Lambertian : public Material {
 public: 
-	__device__ Lambertian(glm::vec3& color) : albedo(color) {}
+	__device__  __host__ Lambertian(const vec3& color) : albedo(color) {}
 
 	__device__ virtual bool scatter(const Ray& ray, const HitRecord& record, vec3& attenuation, Ray& scattered, curandState* local_rand_state) const {
-		glm::vec3 scatter_direction = record.normal + random_unit_vector(local_rand_state);
+		vec3 scatter_direction = record.normal + random_unit_vector(local_rand_state);
 		if (glm::length(scatter_direction) <= 1e-8f) {
 			scatter_direction = record.normal;
 		}
@@ -26,15 +26,15 @@ public:
 	}
 
 private:
-	glm::vec3 albedo;
+	vec3 albedo;
 };
 
 class Metal : public Material {
 public:
-	__device__ Metal(const glm::vec3& color, float fuzz) : albedo(color), fuzz(fuzz) {}
+	__device__ __host__ Metal(const vec3& color, float fuzz) : albedo(color), fuzz(fuzz) {}
 
-	__device__ virtual bool scatter(const Ray& ray, const HitRecord& record, glm::vec3& attenuation, Ray& scattered, curandState* local_rand_state) const{
-		glm::vec3 reflected = reflect(ray.direction(), record.normal);
+	__device__ virtual bool scatter(const Ray& ray, const HitRecord& record, vec3& attenuation, Ray& scattered, curandState* local_rand_state) const{
+		vec3 reflected = reflect(ray.direction(), record.normal);
 		reflected = glm::normalize(reflected) + (fuzz * random_unit_vector(local_rand_state));
 		scattered = Ray(record.point, reflected);
 		attenuation = albedo;
@@ -42,26 +42,26 @@ public:
 		return true;
 	}
 private:
-	glm::vec3 albedo;
+	vec3 albedo;
 	float fuzz;
 };
 
 class Dielectric : public Material {
 public:
-	__device__ Dielectric(float refraction_index) : refraction_index(refraction_index) {}
+	__device__ __host__ Dielectric(float refraction_index) : refraction_index(refraction_index) {}
 	
-	__device__ virtual bool scatter(const Ray& ray, const HitRecord& record, glm::vec3& attenuation, Ray& scattered, curandState* local_rand_state) const {
+	__device__ virtual bool scatter(const Ray& ray, const HitRecord& record, vec3& attenuation, Ray& scattered, curandState* local_rand_state) const {
 		attenuation = vec3(1.0f, 1.0f, 1.0f);
 
 		float ri = record.front_face ? 1.0f / refraction_index : refraction_index;
 
-		glm::vec3 unit_direction = glm::normalize(ray.direction());
+		vec3 unit_direction = glm::normalize(ray.direction());
 
 		float cos_theta = std::min(glm::dot(-unit_direction, record.normal), 1.0f);
 		float sin_theta = std::sqrtf(1.0f - cos_theta * cos_theta);
 
 		bool is_reflect = ri * sin_theta > 1.0f;
-		glm::vec3 direction{};
+		vec3 direction{};
 
 		if (is_reflect || reflectance(cos_theta, ri) > random_float(local_rand_state, 0.0f, 1.0f)) {
 			direction = reflect(unit_direction, record.normal);
