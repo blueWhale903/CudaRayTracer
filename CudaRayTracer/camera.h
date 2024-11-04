@@ -20,12 +20,13 @@ public:
 	float defocus_angle = 0.6f;
 	float focus_distance = 10.0f;
 
-	__host__ __device__ Camera(uint32_t image_width, vec3& lookfrom, vec3& lookat, vec3& vup, float vfov, float aspect, float defocus_angle, float focus_dist) {
-		image_width = image_width;
+	__host__ __device__ Camera(uint32_t width, vec3& lookfrom, vec3& lookat, vec3& vup, float vfov, float aspect, float defocus_angle, float focus_dist) {
+		image_width = width;
 		image_height = (uint32_t)(image_width / aspect_ratio);
 		image_height = (image_height < 1) ? 1 : image_height;
 
-		camera_center = look_from;
+		camera_center = lookfrom;
+		look_from = lookfrom;
 
 		//float focal_length = glm::length(look_from - look_at);
 		float theta = degrees_to_radians(vfov);

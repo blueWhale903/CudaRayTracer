@@ -9,8 +9,8 @@ public:
 	__device__ __host__ ~Triangle() {
 		delete material;
 	}
-	__device__ __host__ Triangle(vec3 v1, vec3 v2, vec3 v3, vec3 n1, vec3 n2, vec3 n3) : a(v1), b(v2), c(v3), normal_a(n1), normal_b(n2), normal_c(n3) {
-		material = new Metal(vec3(0.7, 0.6, 0.5), 0.0);
+	__device__ __host__ Triangle(vec3 v1, vec3 v2, vec3 v3, vec3 n1, vec3 n2, vec3 n3, Material* mat) : a(v1), b(v2), c(v3), normal_a(n1), normal_b(n2), normal_c(n3) {
+		material = mat;
 	}
 		
 	__device__ bool hit(const Ray& ray, Interval ray_t, HitRecord& record) const override {

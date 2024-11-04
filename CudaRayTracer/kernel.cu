@@ -30,7 +30,7 @@ __global__ void free_world(Hittable** d_world, Camera** d_camera) {
 __global__ void init_camera(Camera** d_camera, uint32_t width, float aspect_ratio) {
     if (blockIdx.x == 0 && threadIdx.x == 0) {
 		float vfov = 20.0f;
-		vec3 look_from = vec3(13.0f, 2.0f, 3.0f);
+		vec3 look_from = vec3(11.5f, 2.0f, 7.0f);
 		vec3 look_at = vec3(0, 0, 0);
 
 		float defocus_angle = 0.6f;
@@ -46,7 +46,7 @@ int main()
     const float ASPECT_RATIO = 16.0f / 9.0f;
     uint32_t IMAGE_WIDTH = 1280;
     uint32_t IMAGE_HEIGHT = 720;
-    const uint32_t spp = 10;
+    const uint32_t spp = 1;
     const uint32_t tx = 8;
     const uint32_t ty = 8;
 
