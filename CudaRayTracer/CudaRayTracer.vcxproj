@@ -99,7 +99,9 @@
     <ClInclude Include="aabb.h" />
     <ClInclude Include="camera.h" />
     <ClInclude Include="color.h" />
+    <ClInclude Include="bvh.h" />
     <ClInclude Include="model.h" />
+    <ClInclude Include="node.h" />
     <ClInclude Include="renderer.h" />
     <ClInclude Include="scene.h" />
     <ClInclude Include="hittable.h" />

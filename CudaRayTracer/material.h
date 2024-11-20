@@ -5,6 +5,11 @@
 class Material {
 public:
 	__device__ __host__ Material() { }
+
+	__device__ virtual vec3 emitted(double u, double v, const vec3& p) const {
+		return vec3(0, 0, 0);
+	}
+
 	__device__ virtual bool scatter(const Ray& ray, const HitRecord& record, vec3& attenuation, Ray& scattered, curandState* local_rand_state) const {
 		return false;
 	}
@@ -51,26 +56,33 @@ public:
 	__device__ __host__ Dielectric(float refraction_index) : refraction_index(refraction_index) {}
 	
 	__device__ virtual bool scatter(const Ray& ray, const HitRecord& record, vec3& attenuation, Ray& scattered, curandState* local_rand_state) const {
-		attenuation = vec3(1.0f, 1.0f, 1.0f);
+		attenuation = vec3(1.0f, 1.0f, 1.0f); // No attenuation for dielectric materials
 
+		// Determine the refractive index depending on the front/back face of the hit surface
 		float ri = record.front_face ? 1.0f / refraction_index : refraction_index;
 
+		// Normalize the incoming ray direction
 		vec3 unit_direction = glm::normalize(ray.direction());
 
+		// Calculate the cosine of the angle between the incident ray and the normal
 		float cos_theta = std::min(glm::dot(-unit_direction, record.normal), 1.0f);
 		float sin_theta = std::sqrtf(1.0f - cos_theta * cos_theta);
 
+		// Check for total internal reflection (TIR) condition
 		bool is_reflect = ri * sin_theta > 1.0f;
-		vec3 direction{};
 
+		vec3 direction;
 		if (is_reflect || reflectance(cos_theta, ri) > random_float(local_rand_state, 0.0f, 1.0f)) {
+			// Total internal reflection or probabilistic reflection based on Schlick's approximation
 			direction = reflect(unit_direction, record.normal);
 		}
 		else {
+			// Refract the ray based on Snell's Law (using refractive indices)
 			direction = refract(unit_direction, record.normal, ri);
 		}
 
-		scattered = Ray(record.point, direction);
+		// Slight offset from the intersection point to avoid self-intersection
+		scattered = Ray(record.point + direction * 1e-3f, direction); // Slightly offset to avoid self-intersection
 
 		return true;
 	}
@@ -83,5 +95,12 @@ private:
 		float r0 = (1.0f - refraction_index) / (1.0f + refraction_index);
 		r0 = r0 * r0;
 		return r0 + (1.0f - r0) * std::pow((1.0f - cosine), 5.0f);
+	}
+};
+
+class DiffuseLight {
+public:
+	DiffuseLight(const vec3& emit) {
+
 	}
 };

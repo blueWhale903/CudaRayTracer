@@ -29,12 +29,12 @@ __global__ void free_world(Hittable** d_world, Camera** d_camera) {
 
 __global__ void init_camera(Camera** d_camera, uint32_t width, float aspect_ratio) {
     if (blockIdx.x == 0 && threadIdx.x == 0) {
-		float vfov = 20.0f;
-		vec3 look_from = vec3(11.5f, 2.0f, 7.0f);
-		vec3 look_at = vec3(0, 0, 0);
+		float vfov = 25.0f;
+		vec3 look_from = vec3(8.f, 5.f, -6.0f);
+		vec3 look_at = vec3(-4, 0, 4);
 
 		float defocus_angle = 0.6f;
-		float focus_distance = 10.0f;
+		float focus_distance = glm::length(look_from - vec3(0,0,0));
 
 		*d_camera = new Camera(width, look_from, look_at, vec3(0, 1, 0),
             vfov, aspect_ratio, defocus_angle, focus_distance);
@@ -44,8 +44,8 @@ __global__ void init_camera(Camera** d_camera, uint32_t width, float aspect_rati
 int main()
 {
     const float ASPECT_RATIO = 16.0f / 9.0f;
-    uint32_t IMAGE_WIDTH = 1280;
-    uint32_t IMAGE_HEIGHT = 720;
+    uint32_t IMAGE_WIDTH = 1000;
+    uint32_t IMAGE_HEIGHT = 1000;
     const uint32_t spp = 1;
     const uint32_t tx = 8;
     const uint32_t ty = 8;
@@ -58,11 +58,11 @@ int main()
     size_t framebuffer_size = num_pixels * sizeof(vec3);
     vec3* framebuffer;
     checkCudaErrors(cudaMallocManaged((void**)&framebuffer, framebuffer_size));
- 
+
     // Initialize camera on GPU
     Camera** d_camera;
     checkCudaErrors(cudaMalloc((void**)&d_camera, sizeof(Camera*)));
-    init_camera<<<1, 1 >>>(d_camera, IMAGE_WIDTH, ASPECT_RATIO);
+    init_camera<<<1, 1>>>(d_camera, IMAGE_WIDTH, ASPECT_RATIO);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 

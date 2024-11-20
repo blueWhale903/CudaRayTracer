@@ -27,8 +27,9 @@ public:
 
 		camera_center = lookfrom;
 		look_from = lookfrom;
+		look_at = lookat;
 
-		//float focal_length = glm::length(look_from - look_at);
+		focus_distance = focus_dist;
 		float theta = degrees_to_radians(vfov);
 		float h = std::tanf(theta / 2.0f);
 
@@ -59,9 +60,8 @@ public:
 		Ray cur_ray = ray;
 		vec3 cur_attenuation(1.0f, 1.0f, 1.0f);
 
-		for (uint32_t i = 0; i < 50; i++) {
+		for (uint32_t i = 0; i < 10; i++) {
 			HitRecord rec;
-			
 			if ((*world)->hit(cur_ray, Interval(0.001f, FLT_MAX), rec)) {
 				Ray scattered;
 				vec3 attenuation;

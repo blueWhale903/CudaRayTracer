@@ -21,8 +21,10 @@ public:
 
 class Hittable {
 public:
+	vec3 minbbox = vec3(0, 0, 0);
+	vec3 maxbbox = vec3(0, 0, 0);
 	__device__ virtual bool hit(const Ray& r, Interval ray_t, HitRecord& record) const = 0;
 
-	virtual AABB bounding_box() const = 0;
+	__device__ virtual AABB bounding_box() const = 0;
 };
 

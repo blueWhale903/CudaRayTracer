@@ -9,6 +9,7 @@ public:
 	uint32_t* d_indices;
 	Material* material;
 	uint32_t num_triangles;
+	uint32_t num_vertices;
 
 	Model(const std::string& modelFilePath) {
 		std::vector<Vertex> h_vertex;
@@ -20,6 +21,7 @@ public:
 		}
 
 		num_triangles = h_indices.size() / 3;
+		num_vertices = h_vertex.size();
 			
 		checkCudaErrors(cudaMalloc((void**)&d_vertex, h_vertex.size() * sizeof(Vertex)));
 		checkCudaErrors(cudaMalloc((void**)&d_indices, h_indices.size() * sizeof(uint32_t)));

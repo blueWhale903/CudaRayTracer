@@ -7,10 +7,12 @@
 
 class Sphere : public Hittable {
 public:
-	__device__ __host__ Sphere(const vec3 center, float radius, Material* material)
+	__device__ Sphere(const vec3 center, float radius, Material* material)
 		: center(center), radius(std::max(0.0f, radius)), material(material) {
 		vec3 rvec(radius, radius, radius);
 		bbox = AABB(center - rvec, center + rvec);
+		minbbox = bbox.min();
+		maxbbox = bbox.max();
 	}
 
 	__device__ __host__ ~Sphere() {
@@ -47,11 +49,11 @@ public:
 		return true;
 	}
 
-	AABB bounding_box() const override { return bbox; }
+	__device__ AABB bounding_box() const override { return bbox; }
 
 	Material* material;
 private:
+	AABB bbox;
 	vec3 center;
 	float radius;
-	AABB bbox;
 };

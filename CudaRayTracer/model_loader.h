@@ -15,7 +15,7 @@ struct Vertex {
 bool LoadModel(const std::string& modelFilePath, std::vector<Vertex>& outVertices, std::vector<uint32_t>& outIndices) {
     Assimp::Importer importer;
 
-    const aiScene* scene = importer.ReadFile(modelFilePath, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+    const aiScene* scene = importer.ReadFile(modelFilePath, aiProcess_JoinIdenticalVertices | aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
 
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         std::cerr << "Error: " << importer.GetErrorString() << std::endl;
@@ -36,7 +36,7 @@ bool LoadModel(const std::string& modelFilePath, std::vector<Vertex>& outVertice
             vec3 n1 = vec3(n.x, n.y, n.z);
 
             vertex.position = v1;   // Get vertex position
-            vertex.normal = n1;      // Get vertex normal
+            vertex.normal = n1;     // Get vertex normal
             outVertices.push_back(vertex);
         }
 
@@ -48,6 +48,8 @@ bool LoadModel(const std::string& modelFilePath, std::vector<Vertex>& outVertice
             }
         }
     }
+
+    printf("Model loaded\n");
 
     return true;
 }

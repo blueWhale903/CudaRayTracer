@@ -41,9 +41,26 @@ void check_cuda(cudaError_t result, char const* const func, const char* const fi
 
 // Utility Functions
 
+// Helper min/max functions
+__device__ float min(std::initializer_list<float> list) {
+    float min_val = *list.begin();
+    for (auto val : list) {
+        min_val = fminf(min_val, val);
+    }
+    return min_val;
+}
+
+__device__ float max(std::initializer_list<float> list) {
+    float max_val = *list.begin();
+    for (auto val : list) {
+        max_val = fmaxf(max_val, val);
+    }
+    return max_val;
+}
+
 __global__ void rand_init(curandState* rand_state) {
     if (threadIdx.x == 0 && blockIdx.x == 0) {
-        curand_init(2004, 0, 0, rand_state);
+        curand_init(1903, 0, 0, rand_state);
     }
 }
 
@@ -81,10 +98,14 @@ __device__ vec3 random_unit_vector(curandState* local_rand_state) {
 }
 
 __device__ vec3 random_in_unit_disk(curandState* local_rand_state) {
-    float theta = random_float(local_rand_state, 0, 2 * M_PI);
-    float r = random_float(local_rand_state, 0.001f, 1.0f);
+    for (int i = 0; i < 10; i++) {
+        auto p = vec3(random_float(local_rand_state, -1, 1), random_float(local_rand_state, -1, 1), 0);
+        if (glm::length(p) < 1)
+            return p;
+    }
 
-    return vec3(r*cosf(theta), r*sinf(theta), 0);
+    auto p = vec3(random_float(local_rand_state, -1, 1), random_float(local_rand_state, -1, 1), 0);
+    return p;
 }
 
 __device__ vec3 reflect(const vec3& v, const vec3& normal) {
@@ -123,6 +144,11 @@ static void export_framebuffer_to_png(vec3* device_framebuffer, uint32_t width, 
     delete[] image_data;
 }
 
+__device__ void swap(float& a, float& b) {
+    float t = a;
+    a = b;
+    b = t;
+}
 
 // Common Headers
 
