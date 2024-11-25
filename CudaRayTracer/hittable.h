@@ -11,6 +11,8 @@ public:
 	vec3 normal;
 	Material* material;
 	float t;
+	float u;
+	float v;
 	bool front_face;
 
 	__device__ void set_face_normal(const Ray& ray, const vec3& outward_normal) {

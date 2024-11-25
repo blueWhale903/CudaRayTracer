@@ -145,7 +145,7 @@ __global__ void load_triangles(Hittable** d_list,
 
     // Use pre-allocated or indexed material
     char* material_memory = d_obj_memory + (num_triangles * sizeof(Triangle)) + (tid * sizeof(Lambertian));
-    triangle->material = new (material_memory) Lambertian(vec3(0.4, 0.3, 0.3));
+    triangle->material = new (material_memory) Lambertian(vec3(0.7, 0.3, 0.16));
 
     // Initialize triangle (AABB, etc.)
     triangle->init();
@@ -162,6 +162,7 @@ __global__ void kernel_triangles_scene(Hittable** d_list, void* d_hittable_memor
         curandState local_rand_state = *rand_state;
 
         d_list[ith_hittable++] = new Sphere(vec3(0.0f, -1000.0f, -1.0f), 1000.0f, new Lambertian(vec3(0.5, 0.5, 0.5)));
+        d_list[ith_hittable++] = new Sphere(vec3(3.0f, 6.5f, 3.0f), 2.0f, new DiffuseLight(vec3(15.0, 15.0, 15.0)));
 
         AABB scene_bbox = d_list[0]->bounding_box();
         for (uint32_t i = 1; i < ith_hittable; ++i) {
@@ -237,13 +238,13 @@ void Scene::launch_triangles_scene(Hittable** d_world) {
     std::vector<Model> models;
     Model* d_models;
 
-    Model rabbit1("../models/dragon.obj");
-    models.push_back(rabbit1);
+    Model teapot("../models/teapot.obj");
+    models.push_back(teapot);
 
     checkCudaErrors(cudaMalloc((void**)&d_models, models.size() * sizeof(Model)));
     checkCudaErrors(cudaMemcpy(d_models, models.data(), models.size() * sizeof(Model), cudaMemcpyHostToDevice));
 
-    uint32_t num_spheres = 1; // Number of Spheres
+    uint32_t num_spheres = 2; // Number of Spheres
     uint32_t num_triangles = 0;
     for (Model model : models) {
         num_triangles += model.num_triangles;
@@ -261,7 +262,7 @@ void Scene::launch_triangles_scene(Hittable** d_world) {
     // Zero out the memory to ensure clean state
     checkCudaErrors(cudaMemset(d_list, 0, (num_hittable+1024) *  sizeof(Hittable*)));
 
-    size_t triangle_memory_size = num_triangles * sizeof(Triangle) * 2; // Double allocation
+    size_t triangle_memory_size = num_triangles * (sizeof(Triangle) + sizeof(Lambertian)) * 2; // Double allocation
     void* d_triangle_memory;
     checkCudaErrors(cudaMalloc(&d_triangle_memory, triangle_memory_size));
 

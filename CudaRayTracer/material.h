@@ -1,12 +1,13 @@
 #pragma once
 
 #include "hittable.h"
+#include "texture.h"
 
 class Material {
 public:
 	__device__ __host__ Material() { }
 
-	__device__ virtual vec3 emitted(double u, double v, const vec3& p) const {
+	__device__ virtual vec3 emitted(float u, float v, const vec3& p) const {
 		return vec3(0, 0, 0);
 	}
 
@@ -17,21 +18,23 @@ public:
 
 class Lambertian : public Material {
 public: 
-	__device__  __host__ Lambertian(const vec3& color) : albedo(color) {}
-
+	//__device__ __host__ Lambertian(const vec3& color) : albedo(color) {}
+	__device__ __host__ Lambertian(const vec3& color) : texture(new SolidColor(color)) {}
+	__device__ __host__ Lambertian(Texture* texure) : texture(texture) {}
 	__device__ virtual bool scatter(const Ray& ray, const HitRecord& record, vec3& attenuation, Ray& scattered, curandState* local_rand_state) const {
 		vec3 scatter_direction = record.normal + random_unit_vector(local_rand_state);
 		if (glm::length(scatter_direction) <= 1e-8f) {
 			scatter_direction = record.normal;
 		}
 		scattered = Ray(record.point, scatter_direction);
-		attenuation = albedo;
+		//attenuation = albedo;
+		attenuation = texture->value(record.u, record.v, record.point);
 
 		return true;
 	}
 
 private:
-	vec3 albedo;
+	Texture* texture;
 };
 
 class Metal : public Material {
@@ -98,9 +101,14 @@ private:
 	}
 };
 
-class DiffuseLight {
+class DiffuseLight : public Material{
 public:
-	DiffuseLight(const vec3& emit) {
+	__device__ __host__ DiffuseLight(Texture* tex) : texture(tex) {}
+	__device__ __host__ DiffuseLight(const vec3& emit) : texture(new SolidColor(emit)) {}
 
+	__device__ vec3 emitted(float u, float v, const vec3& p) const override {
+		return texture->value(u, v, p);
 	}
+private:
+	Texture* texture;
 };

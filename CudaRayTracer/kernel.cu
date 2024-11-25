@@ -46,7 +46,7 @@ int main()
     const float ASPECT_RATIO = 16.0f / 9.0f;
     uint32_t IMAGE_WIDTH = 1000;
     uint32_t IMAGE_HEIGHT = 1000;
-    const uint32_t spp = 1;
+    const uint32_t spp = 10;
     const uint32_t tx = 8;
     const uint32_t ty = 8;
 

@@ -20,6 +20,8 @@ public:
 	float defocus_angle = 0.6f;
 	float focus_distance = 10.0f;
 
+	vec3 background = vec3(0, 0, 0);
+
 	__host__ __device__ Camera(uint32_t width, vec3& lookfrom, vec3& lookat, vec3& vup, float vfov, float aspect, float defocus_angle, float focus_dist) {
 		image_width = width;
 		image_height = (uint32_t)(image_width / aspect_ratio);
@@ -59,29 +61,29 @@ public:
 	{
 		Ray cur_ray = ray;
 		vec3 cur_attenuation(1.0f, 1.0f, 1.0f);
+		vec3 final_color(0.0f, 0.0f, 0.0f);  // Track accumulated color
 
-		for (uint32_t i = 0; i < 10; i++) {
+		for (uint32_t depth = 0; depth < 10; depth++) {  // Using depth for clarity
 			HitRecord rec;
-			if ((*world)->hit(cur_ray, Interval(0.001f, FLT_MAX), rec)) {
-				Ray scattered;
-				vec3 attenuation;
-				if (rec.material->scatter(cur_ray, rec, attenuation, scattered, local_rand_state)) {
-					cur_attenuation *= attenuation;
-					cur_ray = scattered;
-				}
-				else {
-					return vec3(0, 0, 0);
-				}
+			if (!(*world)->hit(cur_ray, Interval(0.001f, FLT_MAX), rec)) {
+				final_color += cur_attenuation * background;  // Accumulate background contribution
+				break;  // Exit loop after adding background
 			}
-			else {
-				vec3 unit_direction = glm::normalize(cur_ray.direction());
-				float t = 0.5f * (unit_direction.y + 1.0f);
-				vec3 c = (1.0f - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0);
-				return cur_attenuation * c;
+
+			vec3 color_from_emission = rec.material->emitted(rec.u, rec.v, rec.point);
+			final_color += cur_attenuation * color_from_emission;  // Accumulate emission
+
+			Ray scattered;
+			vec3 attenuation;
+			if (!rec.material->scatter(cur_ray, rec, attenuation, scattered, local_rand_state)) {
+				break;  // Exit loop if no scatter (we already added emission)
 			}
+
+			cur_attenuation *= attenuation;  // Update attenuation for next bounce
+			cur_ray = scattered;  // Update ray for next bounce
 		}
 
-		return vec3(0.0f, 0.0f, 0.0f);
+		return final_color;
 	}
 	__device__ Ray get_ray(float x, float y, curandState* local_rand_state) {
 		glm::vec2 offset = sample_square(local_rand_state);
