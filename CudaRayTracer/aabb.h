@@ -5,89 +5,80 @@
 
 class AABB {
 public:
-	Interval x, y, z;
+    Interval x, y, z;
 
-	__device__ AABB() {}
-	__device__ AABB(const Interval x, const Interval& y, const Interval& z): x(x), y(y), z(z) {}
-	__device__ AABB(const vec3& point_a, const vec3& point_b) {
-		x = point_a.x < point_b.x ? Interval(point_a.x, point_b.x) : Interval(point_b.x, point_a.x);
-		y = point_a.y < point_b.y ? Interval(point_a.y, point_b.y) : Interval(point_b.y, point_a.y);
-		z = point_a.z < point_b.z ? Interval(point_a.z, point_b.z) : Interval(point_b.z, point_a.z);
-	}
-	__device__ AABB(const AABB& bbox0, const AABB& bbox1) {
-		x = Interval(bbox0.x, bbox1.x);
-		y = Interval(bbox0.y, bbox1.y);
-		z = Interval(bbox0.z, bbox1.z);
-	}
+    __device__ AABB() = default;
 
-	__device__ Interval get_axis(uint8_t i) {
-		if (i == 1) return y;
-		if (i == 2) return z;
+    __device__ AABB(const Interval& x, const Interval& y, const Interval& z)
+        : x(x), y(y), z(z) {}
 
-		return x;
-	}
+    __device__ AABB(const vec3& point_a, const vec3& point_b)
+        : x(Interval(fminf(point_a.x, point_b.x), fmaxf(point_a.x, point_b.x))),
+        y(Interval(fminf(point_a.y, point_b.y), fmaxf(point_a.y, point_b.y))),
+        z(Interval(fminf(point_a.z, point_b.z), fmaxf(point_a.z, point_b.z))) {
+        minbbox = vec3(x.min, y.min, z.min);
+        maxbbox = vec3(x.max, y.max, z.max);
+    }
 
-	__device__ vec3 min() const {
-		return vec3(x.min, y.min, z.min);
-	}
+    __device__ AABB(const AABB& bbox0, const AABB& bbox1)
+        : x(Interval(bbox0.x, bbox1.x)),
+        y(Interval(bbox0.y, bbox1.y)),
+        z(Interval(bbox0.z, bbox1.z)) {
+        minbbox = vec3(x.min, y.min, z.min);
+        maxbbox = vec3(x.max, y.max, z.max);
+    }
 
-	__device__ vec3 max() const {
-		return vec3(x.max, y.max, z.max);
-	}
+    __device__ __forceinline__ Interval get_axis(uint8_t i) const {
+        return (i == 1) ? y : (i == 2) ? z : x;
+    }
 
-	__device__ vec3 centroid() {
-		return (min() + max()) * 0.5f;
-	}
+    __device__ __forceinline__ vec3 min() const {
+        return minbbox;
+    }
 
-	__device__ bool hit(const Ray& ray, Interval ray_t) {
-		vec3 ray_origin = ray.origin();
-		vec3 ray_dir = ray.direction();
+    __device__ __forceinline__ vec3 max() const {
+        return maxbbox;
+    }
 
-		for (uint8_t axis = 0; axis < 3; axis++) {
-			const Interval& ax = get_axis(axis);
-			const double adinv = 1.0 / ray_dir[axis];
+    __device__ __forceinline__ vec3 centroid() const {
+        return (minbbox + maxbbox) * 0.5f;
+    }
 
-			auto t0 = (ax.min - ray_origin[axis]) * adinv;
-			auto t1 = (ax.max - ray_origin[axis]) * adinv;
+    __device__ bool hit(const Ray& ray, Interval ray_t) const {
+        const vec3 ray_origin = ray.origin();
+        const vec3 inv_dir = 1.0f / ray.direction();
 
-			if (t0 < t1) {
-				if (t0 > ray_t.min) ray_t.min = t0;
-				if (t1 < ray_t.max) ray_t.max = t1;
-			}
-			else {
-				if (t1 > ray_t.min) ray_t.min = t1;
-				if (t0 < ray_t.max) ray_t.max = t0;
-			}
+        vec3 t0 = (minbbox - ray_origin) * inv_dir;
+        vec3 t1 = (maxbbox - ray_origin) * inv_dir;
 
-			ray_t.min -= 1e-7;
-			ray_t.max += 1e-7;
+        vec3 tNear = glm::min(t0, t1) - EPSILON;
+        vec3 tFar = glm::max(t0, t1) + EPSILON;
 
-			if (ray_t.max <= ray_t.min)
-				return false;
-		}
+        ray_t.min = fmaxf(fmaxf(tNear.x, tNear.y), tNear.z);
+        ray_t.max = fminf(fminf(tFar.x, tFar.y), tFar.z);
 
-		return true;
-	}
+        //t_min = ray_t.min;
+        return ray_t.min <= ray_t.max && ray_t.max > 0.0f;
+    }
 
-	__device__ bool fastAABBIntersect(const Ray& ray, Interval ray_t, float& t_min) {
-		glm::vec3 invDir = 1.0f / ray.direction(); // Calculate the reciprocal of the direction vector
-		const float eps = 1e-7;
+    __device__ __forceinline__ bool fastAABBIntersect(const Ray& ray, float& t_min) const {
+        const vec3 ray_origin = ray.origin();
+        const vec3 inv_dir = 1.0f / ray.direction();
 
-		// Calculate t values for each axis
-		glm::vec3 t0 = (min() - ray.origin()) * invDir;
-		glm::vec3 t1 = (max() - ray.origin()) * invDir;
+        vec3 t0 = (minbbox - ray_origin) * inv_dir;
+        vec3 t1 = (maxbbox - ray_origin) * inv_dir;
 
-		// Ensure t0 is the entry point and t1 is the exit point
-		glm::vec3 tNear = glm::min(t0, t1) - eps; // Component-wise min
-		glm::vec3 tFar = glm::max(t0, t1) + eps;  // Component-wise max
+        vec3 tNear = min_vec(t0, t1) - EPSILON;
+        vec3 tFar = max_vec(t0, t1) + EPSILON;
 
-		// Find the largest tNear and the smallest tFar
-		ray_t.min = glm::max(glm::max(tNear.x, tNear.y), tNear.z);
-		ray_t.max = glm::min(glm::min(tFar.x, tFar.y), tFar.z);
+        float min_t = fmaxf(fmaxf(tNear.x, tNear.y), tNear.z);
+        float max_t = fminf(fminf(tFar.x, tFar.y), tFar.z);
 
-		t_min = ray_t.min;
+        t_min = min_t;
+        return min_t <= max_t && max_t > 0.0f;
+    }
 
-		// Ray intersects the AABB if tMin <= tMax and tMax is positive
-		return ray_t.min <= ray_t.max && ray_t.max > 0.0f;
-	}
+private:
+    vec3 minbbox, maxbbox;
+    static constexpr float EPSILON = 1e-7f;
 };

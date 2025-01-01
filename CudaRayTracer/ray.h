@@ -12,8 +12,8 @@ public:
 
     __device__ Ray(const vec3& origin, const vec3& direction) : origin_point(origin), dir(direction) {}
 
-    __device__ const vec3& origin() const { return origin_point; }
-    __device__ const vec3& direction() const { return dir; }
+    __device__ __forceinline__ const vec3& origin() const { return origin_point; }
+    __device__ __forceinline__ const vec3& direction() const { return dir; }
 
     __device__ vec3 at(float t) const {
         return origin_point + t * dir;

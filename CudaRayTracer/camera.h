@@ -20,16 +20,17 @@ public:
 	float defocus_angle = 0.6f;
 	float focus_distance = 10.0f;
 
-	vec3 background = vec3(0, 0, 0);
+	vec3 background = vec3(0.0, 0.0, 0.0);
 
 	__host__ __device__ Camera(uint32_t width, vec3& lookfrom, vec3& lookat, vec3& vup, float vfov, float aspect, float defocus_angle, float focus_dist) {
-		image_width = width;
-		image_height = (uint32_t)(image_width / aspect_ratio);
-		image_height = (image_height < 1) ? 1 : image_height;
-
+		aspect_ratio = aspect;
 		camera_center = lookfrom;
 		look_from = lookfrom;
 		look_at = lookat;
+
+		image_width = width;
+		image_height = (uint32_t)(image_width / aspect_ratio);
+		image_height = (image_height < 1) ? 1 : image_height;
 
 		focus_distance = focus_dist;
 		float theta = degrees_to_radians(vfov);
@@ -57,30 +58,38 @@ public:
 		defocus_disk_v = v * defocus_radius;
 	}
 
-	__device__ vec3 ray_color(const Ray& ray, Hittable** world, curandState* local_rand_state)
-	{
-		Ray cur_ray = ray;
+	__device__ vec3 ray_color(const Ray& ray, Hittable** world, curandState* local_rand_state) {
+		vec3 final_color(0.0f, 0.0f, 0.0f);
 		vec3 cur_attenuation(1.0f, 1.0f, 1.0f);
-		vec3 final_color(0.0f, 0.0f, 0.0f);  // Track accumulated color
+		Ray cur_ray = ray;
 
-		for (uint32_t depth = 0; depth < 10; depth++) {  // Using depth for clarity
+		// Consider using a while loop with an early exit strategy
+		for (uint32_t depth = 0; depth < 10; depth++) {
 			HitRecord rec;
+			// Potentially use a more aggressive early exit condition
 			if (!(*world)->hit(cur_ray, Interval(0.001f, FLT_MAX), rec)) {
-				final_color += cur_attenuation * background;  // Accumulate background contribution
-				break;  // Exit loop after adding background
+				final_color += cur_attenuation * background;
+				break;
 			}
 
-			vec3 color_from_emission = rec.material->emitted(rec.u, rec.v, rec.point);
-			final_color += cur_attenuation * color_from_emission;  // Accumulate emission
+			// Combine emission and scattering in a single pass
+			vec3 emitted = rec.material->emitted(rec.u, rec.v, rec.point);
+			final_color += cur_attenuation * emitted;
 
 			Ray scattered;
 			vec3 attenuation;
 			if (!rec.material->scatter(cur_ray, rec, attenuation, scattered, local_rand_state)) {
-				break;  // Exit loop if no scatter (we already added emission)
+				break;
 			}
 
-			cur_attenuation *= attenuation;  // Update attenuation for next bounce
-			cur_ray = scattered;  // Update ray for next bounce
+			cur_attenuation *= attenuation;
+			cur_ray = scattered;
+
+			float p = 0.8f;
+			if (depth > 5 && curand_uniform(local_rand_state) > p) {
+				break;
+			}
+			cur_attenuation /= p;
 		}
 
 		return final_color;

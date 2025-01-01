@@ -2,9 +2,9 @@
 
 #include "aabb.h"
 
-struct BVHNode {
+struct alignas(32) BVHNode {
 	AABB bbox;
-	BVHNode* children[2];
+	int left;
+	int right;
 	int id;
-	bool visited = false;
 };

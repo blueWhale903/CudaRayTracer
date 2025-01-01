@@ -5,14 +5,13 @@
 
 class Model {
 public:
-	Vertex* d_vertex;
+	vec3* d_vertex;
 	uint32_t* d_indices;
 	Material* material;
 	uint32_t num_triangles;
 	uint32_t num_vertices;
-
 	Model(const std::string& modelFilePath) {
-		std::vector<Vertex> h_vertex;
+		std::vector<vec3> h_vertex;
 		std::vector<uint32_t> h_indices;
 
 		if (!LoadModel(modelFilePath, h_vertex, h_indices)) {
@@ -23,10 +22,10 @@ public:
 		num_triangles = h_indices.size() / 3;
 		num_vertices = h_vertex.size();
 			
-		checkCudaErrors(cudaMalloc((void**)&d_vertex, h_vertex.size() * sizeof(Vertex)));
+		checkCudaErrors(cudaMalloc((void**)&d_vertex, h_vertex.size() * sizeof(vec3)));
 		checkCudaErrors(cudaMalloc((void**)&d_indices, h_indices.size() * sizeof(uint32_t)));
 
-		checkCudaErrors(cudaMemcpy(d_vertex, h_vertex.data(), h_vertex.size() * sizeof(Vertex), cudaMemcpyHostToDevice));
+		checkCudaErrors(cudaMemcpy(d_vertex, h_vertex.data(), h_vertex.size() * sizeof(vec3), cudaMemcpyHostToDevice));
 		checkCudaErrors(cudaMemcpy(d_indices, h_indices.data(), h_indices.size() * sizeof(uint32_t), cudaMemcpyHostToDevice));;
 	}
 };

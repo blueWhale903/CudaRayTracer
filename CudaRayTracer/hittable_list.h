@@ -29,38 +29,41 @@ public:
             }
         }
 #else
-        BVHNode* stack[64];
+        int stack[32];
         uint32_t stack_size = 0;
         
-        stack[stack_size++] = &d_nodes[size];
+        stack[stack_size++] = size;
         
         while (stack_size > 0) {
-            BVHNode* node = stack[--stack_size];
-            
+            int node_index = stack[--stack_size];
+            BVHNode node = d_nodes[node_index];
+
             float t_min = ray_t.min;
-            if (!node->bbox.fastAABBIntersect(ray, Interval(ray_t.min, closest_so_far), t_min)) {
+            if (!node.bbox.fastAABBIntersect(ray, t_min)) {
                 continue;
             }
 
-            if (node->children[0] == nullptr && node->children[1] == nullptr) {
-                int id = node->id;
+            if (node.left == -1 && node.right == -1) {
+                int id = node.id;
                 if (list[id]->hit(ray, Interval(ray_t.min, closest_so_far), temp_rec)) {
                     hit_anything = true;
                     closest_so_far = temp_rec.t;
                     record = temp_rec;
                 }
+                continue;
             }
 
-            if (node->children[1]) {
-				stack[stack_size++] = node->children[1];
+            if (node.left != -1) {
+				stack[stack_size++] = node.right;
             }
-            if (node->children[0]) {
-				stack[stack_size++] = node->children[0];
+            if (node.right != -1) {
+				stack[stack_size++] = node.left;
             }
         }
 #endif
         return hit_anything;
 	}
+
 
     __device__ AABB bounding_box() const override { return bbox; }
 

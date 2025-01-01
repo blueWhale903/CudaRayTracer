@@ -68,7 +68,7 @@ __host__ __device__ inline float degrees_to_radians(float degrees) {
     return degrees * M_PI / 180.0f;
 }
 
-__device__ float random_float(curandState* local_rand_state, float min, float max) {
+__device__ __forceinline__ float random_float(curandState* local_rand_state, float min, float max) {
     return curand_uniform(local_rand_state) * (max - min) + min;
 }
 
@@ -77,7 +77,7 @@ float random_float(float min, float max) {
     return distribution(gen);
 }
 
-__device__ vec3 random_vec3(curandState* local_rand_state, float start, float end) {
+__device__ __forceinline__ vec3 random_vec3(curandState* local_rand_state, float start, float end) {
     return vec3(random_float(local_rand_state, start, end),
             random_float(local_rand_state, start, end),
             random_float(local_rand_state, start, end));
@@ -87,32 +87,37 @@ vec3 random_vec3(float start, float end) {
     return vec3(random_float(start, end), random_float(start, end), random_float(start, end));
 }
 
-__device__ vec3 random_unit_vector(curandState* local_rand_state) {
-    float theta = random_float(local_rand_state, 0.0, M_PI); 
-    float phi = random_float(local_rand_state, 0.0, 2.0 * M_PI);
-    float x = sinf(theta) * cosf(phi);
-    float y = sinf(theta) * sinf(phi);
-    float z = cosf(theta);
- 
-    return vec3(x, y, z);
+__device__ __forceinline__ vec3 random_unit_vector(curandState* local_rand_state) {
+    //vec3 p;
+    //for (int i = 0; i < 2; i++) {
+    //    p = vec3(random_float(local_rand_state, -1, 1), random_float(local_rand_state, -1, 1), random_float(local_rand_state, -1, 1));
+    //    if (glm::length(p) <= 1)
+    //        return p;
+    //}
+
+    //return p;
+    float theta = 2.0f * M_PI * curand_uniform(local_rand_state);
+    float z = 2.0f * curand_uniform(local_rand_state) - 1.0f;
+    float r = sqrtf(1.0f - z * z);
+    return vec3(r * cosf(theta), r * sinf(theta), z);
 }
 
-__device__ vec3 random_in_unit_disk(curandState* local_rand_state) {
-    for (int i = 0; i < 10; i++) {
-        auto p = vec3(random_float(local_rand_state, -1, 1), random_float(local_rand_state, -1, 1), 0);
-        if (glm::length(p) < 1)
+__device__ __forceinline__ vec3 random_in_unit_disk(curandState* local_rand_state) {
+    vec3 p;
+    for (int i = 0; i < 2; i++) {
+        p = vec3(random_float(local_rand_state, -1, 1), random_float(local_rand_state, -1, 1), 0);
+        if (glm::length(p) <= 1)
             return p;
     }
 
-    auto p = vec3(random_float(local_rand_state, -1, 1), random_float(local_rand_state, -1, 1), 0);
     return p;
 }
 
-__device__ vec3 reflect(const vec3& v, const vec3& normal) {
+__device__ __forceinline__ vec3 reflect(const vec3& v, const vec3& normal) {
     return v - 2.0f * glm::dot(v, normal) * normal;
 }
 
-__device__ vec3 refract(const vec3& uv, const vec3& normal, float etai_over_etat) {
+__device__ __forceinline__ vec3 refract(const vec3& uv, const vec3& normal, float etai_over_etat) {
     float cos_theta = std::fmin(glm::dot(-uv, normal), 1.0f);
     vec3 r_out_perp = etai_over_etat * (uv + cos_theta * normal);
     vec3 r_out_parallel = -std::sqrtf(std::fabs(1.0f - std::pow(glm::length(r_out_perp),2.0f))) * normal;
@@ -148,6 +153,14 @@ __device__ void swap(float& a, float& b) {
     float t = a;
     a = b;
     b = t;
+}
+
+__device__ __forceinline__ vec3 min_vec(const vec3& a, const vec3& b) {
+    return vec3(fminf(a.x, b.x), fminf(a.y, b.y), fminf(a.z, b.z));
+}
+
+__device__ __forceinline__ vec3 max_vec(const vec3& a, const vec3& b) {
+    return vec3(fmaxf(a.x, b.x), fmaxf(a.y, b.y), fmaxf(a.z, b.z));
 }
 
 // Common Headers

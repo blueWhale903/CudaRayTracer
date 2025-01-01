@@ -38,8 +38,8 @@ __global__ void assign_morton_codes(HittableList** d_world, uint32_t* d_indices,
 	if (idx > num_primitives - 1) return;
 
 	Hittable** list = (*d_world)->list;
-	AABB scene_bbox = (*d_world)->bounding_box();
-	AABB object_bbox = list[idx]->bounding_box();
+	AABB scene_bbox = AABB((*d_world)->minbbox, (*d_world)->maxbbox);
+	AABB object_bbox = AABB(list[idx]->minbbox, list[idx]->maxbbox);
 	vec3 centroid = object_bbox.centroid();
 	vec3 normalized_centroid = (centroid - scene_bbox.min()) / (scene_bbox.max() - scene_bbox.min());
 
@@ -47,9 +47,9 @@ __global__ void assign_morton_codes(HittableList** d_world, uint32_t* d_indices,
 	d_indices[idx] = idx;
 }
 
-__device__ uint32_t find_split(unsigned int* sortedMortonCodes,
-	int           first,
-	int           last)
+__device__ uint32_t find_split(uint32_t* sortedMortonCodes,
+	uint32_t           first,
+	uint32_t           last)
 {
 	// Identical Morton codes => split the range in the middle.
 
@@ -80,8 +80,7 @@ __device__ uint32_t find_split(unsigned int* sortedMortonCodes,
 		{
 			unsigned int splitCode = sortedMortonCodes[newSplit];
 			int splitPrefix = __builtin_clz(firstCode ^ splitCode);
-			if (splitPrefix > commonPrefix)
-				split = newSplit; // accept proposal
+			split = (splitPrefix > commonPrefix) ? newSplit : split;
 		}
 	} while (step > 1);
 
@@ -99,6 +98,7 @@ __global__ void build_bvh(BVHNode* nodes, uint32_t* d_morton_codes,
 		uint32_t last;
 		int parent_index;
 		bool is_left_child;
+		int depth;  // Add depth tracking
 	};
 
 	Range stack[32];
@@ -108,30 +108,33 @@ __global__ void build_bvh(BVHNode* nodes, uint32_t* d_morton_codes,
 	
 	Hittable** d_list = (*d_world)->list;
 	int idx = 0;
+	int max_depth = 1;  // Local max depth tracker
+
 	while (stack_size > 0) {
 		Range range = stack[--stack_size];
-
+		
 		uint32_t first = range.first;
 		uint32_t last = range.last;
 		int parent_index = range.parent_index;
 		bool is_left_child = range.is_left_child;
+		int current_depth = range.depth;
+
+		max_depth = fmaxf(max_depth, current_depth);
 
 		if (last == first) {
 			BVHNode* leaf = &nodes[first];
-			vec3 minbbox = d_list[d_indices[first]]->minbbox;
-			vec3 maxbbox = d_list[d_indices[first]]->maxbbox;
 
 			leaf->id = d_indices[first];
-			leaf->children[0] = nullptr;
-			leaf->children[1] = nullptr;
-			leaf->bbox = AABB(minbbox, maxbbox);
+			leaf->left = -1;
+			leaf->right = -1;
+			leaf->bbox = d_list[d_indices[first]]->bounding_box();
 
 			if (parent_index != -1) {
 				if (is_left_child) {
-					nodes[parent_index].children[0] = leaf;
+					nodes[parent_index].left = leaf->id;
 				}
 				else {
-					nodes[parent_index].children[1] = leaf;
+					nodes[parent_index].right = leaf->id;
 				}
 			}
 		}
@@ -146,15 +149,15 @@ __global__ void build_bvh(BVHNode* nodes, uint32_t* d_morton_codes,
 
 			if (parent_index != -1) {
 				if (is_left_child) {
-					nodes[parent_index].children[0] = internal_node;
+					nodes[parent_index].left = internal_node_index;
 				}
 				else {
-					nodes[parent_index].children[1] = internal_node;
+					nodes[parent_index].right = internal_node_index;
 				}
 			}
 
-			stack[stack_size++] = { first, split, internal_node_index, true };
-			stack[stack_size++] = { split + 1, last, internal_node_index, false };
+			stack[stack_size++] = { first, split, internal_node_index, true, current_depth + 1 };
+			stack[stack_size++] = { split + 1, last, internal_node_index, false, current_depth + 1 };
 		}
 	}
 
@@ -164,24 +167,25 @@ __global__ void build_bvh(BVHNode* nodes, uint32_t* d_morton_codes,
 		BVHNode* internal_node = &nodes[num_primitives + i];
 		if (!internal_node) continue;
 
-		if (internal_node->children[0] && internal_node->children[1]) {
+		if (internal_node->left != -1 && internal_node->right != -1) {
 			// Both children exist; combine bounding boxes
-			AABB left_bbox = internal_node->children[0]->bbox;
-			AABB right_bbox = internal_node->children[1]->bbox;
+			AABB left_bbox = nodes[internal_node->left].bbox;
+			AABB right_bbox = nodes[internal_node->right].bbox;
 			internal_node->bbox = AABB(left_bbox, right_bbox);
 		}
-		else if (internal_node->children[0]) {
+		else if (internal_node->left != -1) {
 			// Only left child exists; use its bounding box
-			internal_node->bbox = internal_node->children[0]->bbox;
+			internal_node->bbox = nodes[internal_node->left].bbox;
 		}
-		else if (internal_node->children[1]) {
+		else if (internal_node->right != -1) {
 			// Only right child exists; use its bounding box
-			internal_node->bbox = internal_node->children[1]->bbox;
+			internal_node->bbox = nodes[internal_node->right].bbox;
 		}
 	}
 
 	(*d_world)->d_nodes = nodes;
-	printf("- BVH constructed\n");
+
+	printf("- BVH constructed with max depth: %d\n", max_depth);
 }
 
 

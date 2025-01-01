@@ -27,7 +27,6 @@ public:
 			scatter_direction = record.normal;
 		}
 		scattered = Ray(record.point, scatter_direction);
-		//attenuation = albedo;
 		attenuation = texture->value(record.u, record.v, record.point);
 
 		return true;
@@ -68,8 +67,8 @@ public:
 		vec3 unit_direction = glm::normalize(ray.direction());
 
 		// Calculate the cosine of the angle between the incident ray and the normal
-		float cos_theta = std::min(glm::dot(-unit_direction, record.normal), 1.0f);
-		float sin_theta = std::sqrtf(1.0f - cos_theta * cos_theta);
+		float cos_theta = glm::min(glm::dot(-unit_direction, record.normal), 1.0f);
+		float sin_theta = glm::sqrt(1.0f - cos_theta * cos_theta);
 
 		// Check for total internal reflection (TIR) condition
 		bool is_reflect = ri * sin_theta > 1.0f;

@@ -8,7 +8,7 @@
 class Sphere : public Hittable {
 public:
 	__device__ Sphere(const vec3 center, float radius, Material* material)
-		: center(center), radius(std::max(0.0f, radius)), material(material) {
+		: center(center), radius(glm::max(0.0f, radius)), material(material) {
 		vec3 rvec(radius, radius, radius);
 		bbox = AABB(center - rvec, center + rvec);
 		minbbox = bbox.min();
@@ -27,14 +27,13 @@ public:
 		float c = dot(oc, oc) - radius * radius;
 		float discriminant = b * b - a * c;
 
-		if (discriminant < 0) {
-			return false;
-		}
+		if (discriminant < 0) return false;
 
 		float sqrt_discriminant = std::sqrtf(discriminant);
-		float root = (b - sqrt_discriminant) / a;
+		float inv_a = 1.0f / a;
+		float root = (b - sqrt_discriminant) * inv_a;
 		if (!ray_t.contains(root)) {
-			root = (b + sqrt_discriminant) / a;
+			root = (b + sqrt_discriminant) * inv_a;
 			if (!ray_t.contains(root)) {
 				return false;
 			}

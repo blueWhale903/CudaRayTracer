@@ -88,7 +88,7 @@
       <Include>%(AdditionalIncludeDirectories)</Include>
       <Defines>_CRT_SECURE_NO_WARNINGS</Defines>
       <UseHostInclude>false</UseHostInclude>
-      <AdditionalOptions>--expt-relaxed-constexpr %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>--expt-relaxed-constexpr -O3 -use_fast_math -lineinfo %(AdditionalOptions)</AdditionalOptions>
       <CodeGeneration>compute_86,sm_86</CodeGeneration>
     </CudaCompile>
   </ItemDefinitionGroup>
