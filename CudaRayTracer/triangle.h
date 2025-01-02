@@ -62,12 +62,16 @@ public:
         if (t < ray_t.min - epsilon || t > ray_t.max + epsilon)
             return false;
 
+        vec2 uv = interpolate_uv(uv_a, uv_b, uv_c, u, v);
+
         // Compute final intersection point and normal
         record.t = t;
         record.point = ray.origin() + t * ray.direction();
         vec3 normal = glm::normalize(glm::cross(edge_ab, edge_ac));
         record.set_face_normal(ray, normal);
         record.material = material;
+        record.u = uv.x;
+        record.v = uv.y;
 
         return true;
 	}
@@ -79,4 +83,7 @@ public:
 	vec3 b;
 	vec3 c;
 	AABB bbox;
+    vec2 uv_a;
+    vec2 uv_b;
+    vec2 uv_c;
 };

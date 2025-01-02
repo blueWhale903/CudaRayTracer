@@ -18,22 +18,22 @@ public:
 
 class Lambertian : public Material {
 public: 
-	//__device__ __host__ Lambertian(const vec3& color) : albedo(color) {}
 	__device__ __host__ Lambertian(const vec3& color) : texture(new SolidColor(color)) {}
-	__device__ __host__ Lambertian(Texture* texure) : texture(texture) {}
+	__device__ __host__ Lambertian(Texture* texture) : texture(texture) {}
 	__device__ virtual bool scatter(const Ray& ray, const HitRecord& record, vec3& attenuation, Ray& scattered, curandState* local_rand_state) const {
 		vec3 scatter_direction = record.normal + random_unit_vector(local_rand_state);
 		if (glm::length(scatter_direction) <= 1e-8f) {
 			scatter_direction = record.normal;
 		}
 		scattered = Ray(record.point, scatter_direction);
-		attenuation = texture->value(record.u, record.v, record.point);
+		if (texture)
+			attenuation = texture->value(record.u, record.v, record.point);
 
 		return true;
 	}
 
 private:
-	Texture* texture;
+	Texture* texture = nullptr;
 };
 
 class Metal : public Material {

@@ -2,6 +2,8 @@
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 #include <iostream>
 #include <limits>
@@ -19,6 +21,7 @@
 #include "device_launch_parameters.h"
 
 using glm::vec3;
+using glm::vec2;
 
 // Constants
 static std::mt19937 gen(std::random_device{}());
@@ -163,6 +166,17 @@ __device__ __forceinline__ vec3 max_vec(const vec3& a, const vec3& b) {
     return vec3(fmaxf(a.x, b.x), fmaxf(a.y, b.y), fmaxf(a.z, b.z));
 }
 
+unsigned char* LoadTexture(const std::string& filename, int width, int height, int channels) {
+    return stbi_load(filename.c_str(), &width, &height, &channels, 3); // Force 3 channels (RGB)
+}
+
+__device__ vec2 interpolate_uv(const vec2& uv0, const vec2& uv1, const vec2& uv2,
+    float u, float v) {
+    vec2 uv = (1.0f - u - v) * uv0 + u * uv1 + v * uv2;
+    // Scale UVs to texture dimensions
+    uv.y = 1.0f - uv.y;
+    return uv;
+}
 // Common Headers
 
 #include "color.h"

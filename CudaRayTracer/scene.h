@@ -94,15 +94,21 @@ void Scene::create_random_spheres_scene(Hittable** d_world) {
     construct_bvh(d_world, num_hittable);
 }
 
-__device__ void load_triangles(Hittable** d_list, char* d_triangles, Material** d_materials, Model* d_models, int num_models) {
+__device__ void load_triangles(Hittable** d_list, char* d_triangles, Material** d_materials,
+                               Texture** d_textures, Model* d_models, int num_models) {
     uint32_t ith_hittable = 0;
 
     // Initialize materials using placement new
     for (int i = 0; i < num_models; i++) {
+        if (d_models[i].d_texture) {
+            unsigned char* texture = d_models[i].d_texture;
+             d_materials[i] = new Lambertian(new ImageTexture(texture, 2048, 2048));
+            continue;
+        }
+
         switch (i) {
         case 0:
             d_materials[i] = new Lambertian(vec3(0.73, 0.3, 0.3));
-            //d_materials[i] = new Dielectric(1.5);
             break;
         case 1:
             d_materials[i] = new Lambertian(vec3(0.3, 0.73, 0.3));
@@ -124,6 +130,7 @@ __device__ void load_triangles(Hittable** d_list, char* d_triangles, Material** 
         Model model = d_models[i];
         vec3* vertices = model.d_vertex;
         uint32_t* indices = model.d_indices;
+        vec2* tex_coords = model.d_uvs; // Texture coordinates
 
         Material* mat = d_materials[i];
 
@@ -135,9 +142,17 @@ __device__ void load_triangles(Hittable** d_list, char* d_triangles, Material** 
             int i1 = indices[3 * j + 1];
             int i2 = indices[3 * j + 2];
 
+            vec2 uv0 = tex_coords[i0];
+            vec2 uv1 = tex_coords[i1];
+            vec2 uv2 = tex_coords[i2];
+
             vec3 p0 = vertices[i0];
             vec3 p1 = vertices[i1];
             vec3 p2 = vertices[i2];
+
+            triangle->uv_a = uv0;
+            triangle->uv_b = uv1;
+            triangle->uv_c = uv2;
 
             triangle->a = p0;
             triangle->b = p1;
@@ -151,14 +166,17 @@ __device__ void load_triangles(Hittable** d_list, char* d_triangles, Material** 
     }
 }
 
-__global__ void build_cb_bunny(Hittable** d_world, Hittable** d_list, char* d_triangles, Material** d_materials, Model* d_models, int num_models, int num_triangles) {
+__global__ void build_cb_bunny(Hittable** d_world, Hittable** d_list, char* d_triangles, Material** d_materials,
+                               Texture** d_textures, Model* d_models, int num_models, int num_triangles) {
     if (blockIdx.x == 0 && threadIdx.x == 0) {
         int ith_hittable = num_triangles;
 
-        load_triangles(d_list, d_triangles, d_materials, d_models, num_models);
+        load_triangles(d_list, d_triangles, d_materials, d_textures, d_models, num_models);
 
         //d_list[ith_hittable++] = new Sphere(vec3(-3, 3, 4), 3.0f, new Metal(vec3(1, 1, 1), 0.0f));
-        //d_list[ith_hittable++] = new Sphere(vec3(2, 3, -4), 3.0f, new Dielectric(1.5f));
+        //d_list[ith_hittable++] = new Sphere(vec3(2, 3, -4), 3.0f, new Dielectric(1.5));
+        d_list[ith_hittable++] = new Sphere(vec3(0.0f, -1000.0f, -1.0f), 1000.0f, new Lambertian(vec3(0.5, 0.5, 0.5)));
+        d_list[ith_hittable++] = new Sphere(vec3(-20, 100, 0), 50.0, new DiffuseLight(vec3(1, 1, 1)));
 
         AABB scene_bbox = d_list[0]->bounding_box();
         for (uint32_t i = 1; i < ith_hittable; ++i) {
@@ -176,27 +194,27 @@ void Scene::create_cb_bunny(Hittable** d_world) {
     std::vector<Model> models;
     Model* d_models;
 
-    Model back("../models/back.obj");
-    Model left("../models/left.obj");
-    Model right("../models/right.obj");
-    Model top("../models/top.obj");
-    Model bot("../models/bot.obj");
-    Model light("../models/light.obj");
-    Model bunny("../models/small_bunny.obj");
+    //Model back("../models/back.obj", "../texture_images/tex1.png");
+    //Model left("../models/left.obj");
+    //Model right("../models/right.obj");
+    //Model top("../models/top.obj");
+    //Model bot("../models/bot.obj");
+    //Model light("../models/light.obj");
+    Model bunny("../models/texture_cat.obj", "../texture_images/texture_cat.png");
 
-    models.push_back(left);
-    models.push_back(right);
-    models.push_back(light);
-    models.push_back(back);
-    models.push_back(bot);
-    models.push_back(top);
+    //models.push_back(left);
+    //models.push_back(right);
+    //models.push_back(light);
+    //models.push_back(back);
+    //models.push_back(bot);
+    //models.push_back(top);
     models.push_back(bunny);
 
     checkCudaErrors(cudaMalloc((void**)&d_models, models.size() * sizeof(Model)));
     checkCudaErrors(cudaMemcpy(d_models, models.data(), models.size() * sizeof(Model), cudaMemcpyHostToDevice));
 
     uint32_t num_triangles = 0;
-    uint32_t num_spheres = 0;
+    uint32_t num_spheres = 2;
     for (Model model : models) {
         num_triangles += model.num_triangles;
     }
@@ -206,13 +224,16 @@ void Scene::create_cb_bunny(Hittable** d_world) {
     checkCudaErrors(cudaMalloc((void**)&d_list, num_hittable * sizeof(Hittable*)));
 
     Material** d_materials;
+    Texture** d_textures;
     checkCudaErrors(cudaMallocManaged((void**)&d_materials, models.size() * sizeof(Material*)));
+    checkCudaErrors(cudaMallocManaged((void**)&d_textures, models.size() * sizeof(Texture*)));
 
     size_t triangle_memory_size = num_triangles * (sizeof(Triangle));
     void* d_triangle_memory;
     checkCudaErrors(cudaMalloc((void**)&d_triangle_memory, triangle_memory_size));
 
-    build_cb_bunny<<<1, 1>>>(d_world, d_list, static_cast<char*>(d_triangle_memory), d_materials, d_models, models.size(), num_triangles);
+
+    build_cb_bunny<<<1, 1>>>(d_world, d_list, static_cast<char*>(d_triangle_memory), d_materials, d_textures, d_models, models.size(), num_triangles);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 
